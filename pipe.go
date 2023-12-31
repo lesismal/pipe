@@ -29,13 +29,9 @@ func (p *Pipe) Start() error {
 		return nil
 	}
 
-	log.Printf("Pipe Start with [timeout: %v seconds]", p.Timeout.Seconds())
-
 	p.running = true
 
-	if p.ReadBufferSize <= 0 {
-		p.ReadBufferSize = 4096
-	}
+	p.initConfig()
 
 	var err error
 	p.ln, err = p.Listen()
@@ -66,6 +62,17 @@ func (p *Pipe) Stop() {
 		dst.Close()
 	}
 	p.conns = nil
+}
+
+func (p *Pipe) initConfig() {
+	if p.Timeout <= 0 {
+		p.Timeout = 60 * time.Second
+	}
+	if p.ReadBufferSize <= 0 {
+		p.ReadBufferSize = 4096
+	}
+	log.Printf("Pipe Start with [timeout: %v seconds, read buffer: %v]", p.Timeout.Seconds(), p.ReadBufferSize)
+
 }
 
 func (p *Pipe) accept() error {
