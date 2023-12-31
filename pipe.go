@@ -81,6 +81,7 @@ func (p *Pipe) accept() error {
 	for p.running {
 		src, err = p.ln.Accept()
 		if err == nil {
+			log.Printf("Accept: [local %v, remote %v]", src.LocalAddr(), src.RemoteAddr())
 			go p.serve(src)
 		}
 	}
@@ -90,8 +91,11 @@ func (p *Pipe) accept() error {
 func (p *Pipe) serve(src net.Conn) {
 	dst, err := p.Dial()
 	if err != nil {
+		log.Printf("[local %v, remote %v] Dial failed: %v", src.LocalAddr(), src.RemoteAddr(), err)
+		src.Close()
 		return
 	}
+	log.Printf("[local %v, remote %v] Dial success", src.LocalAddr(), src.RemoteAddr())
 
 	p.mux.Lock()
 	if p.conns == nil {
