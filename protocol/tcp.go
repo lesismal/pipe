@@ -10,8 +10,8 @@ func ListenTCP(addr string) func() (net.Listener, error) {
 	}
 }
 
-func DialTCP(addr string) func() (net.Conn, error) {
-	return func() (net.Conn, error) {
-		return net.Dial("tcp", addr)
+func DialTCP(dstAddr string) func(net.Conn) (net.Conn, error) {
+	return func(src net.Conn) (net.Conn, error) {
+		return net.Dial("tcp", dstAddr)
 	}
 }

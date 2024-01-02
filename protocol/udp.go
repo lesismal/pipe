@@ -262,9 +262,9 @@ func ListenUDP(addr string) func() (net.Listener, error) {
 	}
 }
 
-func DialUDP(addr string) func() (net.Conn, error) {
-	return func() (net.Conn, error) {
-		udpAddr, err := net.ResolveUDPAddr("udp", addr)
+func DialUDP(dstAddr string) func(net.Conn) (net.Conn, error) {
+	return func(src net.Conn) (net.Conn, error) {
+		udpAddr, err := net.ResolveUDPAddr("udp", dstAddr)
 		if err != nil {
 			return nil, err
 		}

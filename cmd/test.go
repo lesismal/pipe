@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/lesismal/pipe"
@@ -14,6 +15,8 @@ import (
 )
 
 func main() {
+	websocket.DefaultDialer.HandshakeTimeout = config.Timeout()
+
 	key := make([]byte, 32)
 	iv := make([]byte, 16)
 	rand.Read(key)
@@ -22,29 +25,32 @@ func main() {
 		Key: key,
 		IV:  iv,
 	}
+
 	cliSrc, cliDst := config.ClientAddrs()
-	websocket.DefaultDialer.HandshakeTimeout = config.Timeout()
+	svrSrc, svrDst := config.ServerAddrs()
+
 	pClient := &pipe.Pipe{
-		Listen:  protocol.ListenUDP(cliSrc),
-		Dial:    protocol.DialWebsocket(cliDst),
+		Listen: protocol.ListenUDP(cliSrc),
+		// Dial:    protocol.DialWebsocket(cliDst),
+		Dial:    protocol.WithWritingDstAddr(cliDst, svrDst, protocol.DialWebsocket),
 		Packer:  packer,
 		Timeout: config.Timeout(),
 	}
 	pClient.StartClient()
 	defer pClient.Stop()
 
-	svrSrc, svrDst := config.ServerAddrs()
 	pServer := &pipe.Pipe{
-		Listen:  protocol.ListenWebsocket(svrSrc),
-		Dial:    protocol.DialUDP(svrDst),
+		Listen: protocol.ListenWebsocket(svrSrc),
+		// Dial:    protocol.DialUDP(svrDst),
+		Dial:    protocol.WithReadingDstAddr(protocol.DialUDP),
 		Packer:  packer,
 		Timeout: config.Timeout(),
 	}
 	pServer.StartServer()
 	defer pServer.Stop()
 
-	go udpServer("localhost:18082")
-	udpClient("localhost:18080")
+	go udpServer(svrDst)
+	udpClient(cliSrc)
 }
 
 func udpServer(addr string) {
@@ -87,7 +93,7 @@ func udpClient(addr string) {
 	}
 
 	for i := 0; i < 10; i++ {
-		// time.Sleep(time.Second / 100)
+		time.Sleep(time.Second)
 		data := []byte(fmt.Sprintf("hello from client %v", i))
 		n, err := conn.Write(data)
 		if err != nil {

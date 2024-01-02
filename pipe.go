@@ -1,8 +1,6 @@
 package pipe
 
 import (
-	"encoding/binary"
-	"io"
 	"log"
 	"net"
 	"sync"
@@ -18,7 +16,7 @@ type Pipe struct {
 	isServer bool
 
 	Listen         func() (net.Listener, error)
-	Dial           func() (net.Conn, error)
+	Dial           func(net.Conn) (net.Conn, error)
 	Packer         Packer
 	Timeout        time.Duration
 	ReadBufferSize int
@@ -103,7 +101,7 @@ func (p *Pipe) accept() error {
 }
 
 func (p *Pipe) serve(src net.Conn) {
-	dst, err := p.Dial()
+	dst, err := p.Dial(src)
 	if err != nil {
 		log.Printf("[local %v, remote %v] Dial failed: %v", src.LocalAddr(), src.RemoteAddr(), err)
 		src.Close()
@@ -186,7 +184,7 @@ func (p *Pipe) copyRawToFragment(dst, src net.Conn) (int64, error) {
 		} else {
 			packet = buffer[:nread]
 		}
-		_, err = p.writeFragment(dstWriter, packet)
+		_, err = WriteFragment(dstWriter, packet)
 		if err != nil {
 			goto Exit
 		}
@@ -212,7 +210,7 @@ func (p *Pipe) copyFragmentToRaw(dst, src net.Conn) (int64, error) {
 		if p.Timeout > 0 {
 			src.SetReadDeadline(time.Now().Add(p.Timeout))
 		}
-		b, err := p.readFragment(srcReader)
+		b, err := ReadFragment(srcReader)
 		if err != nil {
 			goto Exit
 		}
@@ -232,40 +230,4 @@ func (p *Pipe) copyFragmentToRaw(dst, src net.Conn) (int64, error) {
 
 Exit:
 	return ncopy, err
-}
-
-func (p *Pipe) readFragment(src io.Reader) ([]byte, error) {
-	head := make([]byte, 2)
-	_, err := io.ReadFull(src, head)
-	if err != nil {
-		return nil, err
-	}
-
-	l := binary.LittleEndian.Uint16(head)
-	b := make([]byte, l)
-	_, err = io.ReadFull(src, b)
-	if err != nil {
-		return nil, err
-	}
-	return b, err
-}
-
-func (p *Pipe) writeFragment(dst io.Writer, b []byte) (int, error) {
-	nTotal := 0
-	head := make([]byte, 2)
-	binary.LittleEndian.PutUint16(head, uint16(len(b)))
-
-	n1, err := dst.Write(head[:])
-	if n1 > 0 {
-		nTotal = n1
-	}
-	if err != nil {
-		return nTotal, err
-	}
-
-	n2, err := dst.Write(b)
-	if n2 > 0 {
-		nTotal += n2
-	}
-	return nTotal, err
 }

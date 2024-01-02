@@ -22,8 +22,8 @@ func ListenWebsocket(addr string) func() (net.Listener, error) {
 	}
 }
 
-func DialWebsocket(addr string) func() (net.Conn, error) {
-	return func() (net.Conn, error) {
-		return websocket.Dial(fmt.Sprintf("ws://%v/ws", addr))
+func DialWebsocket(dstAddr string) func(net.Conn) (net.Conn, error) {
+	return func(src net.Conn) (net.Conn, error) {
+		return websocket.Dial(fmt.Sprintf("ws://%v/ws", dstAddr))
 	}
 }
