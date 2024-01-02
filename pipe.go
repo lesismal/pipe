@@ -101,6 +101,8 @@ func (p *Pipe) accept() error {
 }
 
 func (p *Pipe) serve(src net.Conn) {
+	defer Recover()
+
 	dst, err := p.Dial(src)
 	if err != nil {
 		log.Printf("[local %v, remote %v] Dial failed: %v", src.LocalAddr(), src.RemoteAddr(), err)
@@ -133,6 +135,7 @@ func (p *Pipe) serve(src net.Conn) {
 
 	if p.isServer {
 		go func() {
+			defer Recover()
 			defer closePipe()
 			log.Printf("[svr] [dst remote %v -> dst local %v -> src local %v -> src remote %v] copying...", dstRemoteAddr, dstLocalAddr, srcLocalAddr, srcRemoteAddr)
 			nCopy, err := p.copyRawToFragment(src, dst)
