@@ -1,38 +1,31 @@
 package main
 
 import (
-	"fmt"
-	"net"
 	"os"
 	"os/signal"
 
 	gorilla "github.com/gorilla/websocket"
-	"github.com/lesismal/arpc/extension/protocol/websocket"
 	"github.com/lesismal/pipe"
 	"github.com/lesismal/pipe/cmd/config"
+	"github.com/lesismal/pipe/packer"
+	"github.com/lesismal/pipe/protocol"
 )
 
 func main() {
 	key, iv := config.KeyIV()
-	packer := &pipe.AESPacker{
+	packer := &packer.AESCBC{
 		Key: key,
 		IV:  iv,
 	}
 	cliSrc, cliDst := config.ClientAddrs()
 	gorilla.DefaultDialer.HandshakeTimeout = config.Timeout()
 	pClient := &pipe.Pipe{
-		Listen: pipe.ListenUDP(cliSrc),
-		// Dial: func() (net.Conn, error) {
-		// 	return net.Dial("tcp", cliDst)
-		// },
-		Dial: func() (net.Conn, error) {
-			return websocket.Dial(fmt.Sprintf("ws://%v/ws", cliDst))
-		},
-		Pack:    packer.CBCEncrypt,
-		Unpack:  packer.CBCDecrypt,
+		Listen:  protocol.ListenTCP(cliSrc),
+		Dial:    protocol.DialWebsocket(cliDst),
+		Packer:  packer,
 		Timeout: config.Timeout(),
 	}
-	pClient.Start()
+	pClient.StartClient()
 	defer pClient.Stop()
 
 	interrupt := make(chan os.Signal, 1)

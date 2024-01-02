@@ -1,45 +1,30 @@
 package main
 
 import (
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 
-	"github.com/lesismal/arpc/extension/protocol/websocket"
 	"github.com/lesismal/pipe"
 	"github.com/lesismal/pipe/cmd/config"
+	"github.com/lesismal/pipe/packer"
+	"github.com/lesismal/pipe/protocol"
 )
 
 func main() {
 	key, iv := config.KeyIV()
-	packer := &pipe.AESPacker{
+	packer := &packer.AESCBC{
 		Key: key,
 		IV:  iv,
 	}
 
 	svrSrc, svrDst := config.ServerAddrs()
 	pServer := &pipe.Pipe{
-		// Listen: func() (net.Listener, error) {
-		// 	return net.Listen("tcp", svrSrc)
-		// },
-		Listen: func() (net.Listener, error) {
-			ln, err := websocket.Listen(svrSrc, nil)
-			mux := &http.ServeMux{}
-			mux.HandleFunc("/ws", ln.(*websocket.Listener).Handler)
-			server := http.Server{
-				Addr:    svrSrc,
-				Handler: mux,
-			}
-			go server.ListenAndServe()
-			return ln, err
-		},
-		Dial:    pipe.DialUDP(svrDst),
-		Pack:    packer.CBCDecrypt,
-		Unpack:  packer.CBCEncrypt,
+		Listen:  protocol.ListenWebsocket(svrSrc),
+		Dial:    protocol.DialTCP(svrDst),
+		Packer:  packer,
 		Timeout: config.Timeout(),
 	}
-	pServer.Start()
+	pServer.StartServer()
 	defer pServer.Stop()
 
 	interrupt := make(chan os.Signal, 1)

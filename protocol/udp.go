@@ -1,4 +1,4 @@
-package pipe
+package protocol
 
 import (
 	"context"

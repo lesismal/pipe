@@ -6,7 +6,11 @@ import (
 	"log"
 	"net"
 
+	"github.com/gorilla/websocket"
 	"github.com/lesismal/pipe"
+	"github.com/lesismal/pipe/cmd/config"
+	"github.com/lesismal/pipe/packer"
+	"github.com/lesismal/pipe/protocol"
 )
 
 func main() {
@@ -14,32 +18,33 @@ func main() {
 	iv := make([]byte, 16)
 	rand.Read(key)
 	rand.Read(iv)
-	packer := &pipe.AESPacker{
+	packer := &packer.AESCBC{
 		Key: key,
 		IV:  iv,
 	}
+	cliSrc, cliDst := config.ClientAddrs()
+	websocket.DefaultDialer.HandshakeTimeout = config.Timeout()
 	pClient := &pipe.Pipe{
-		Listen: pipe.ListenUDP("localhost:8080"),
-		Dial: func() (net.Conn, error) {
-			return net.Dial("tcp", "localhost:8081")
-		},
-		Pack:   packer.CBCEncrypt,
-		Unpack: packer.CBCDecrypt,
+		Listen:  protocol.ListenUDP(cliSrc),
+		Dial:    protocol.DialWebsocket(cliDst),
+		Packer:  packer,
+		Timeout: config.Timeout(),
 	}
-	pClient.Start()
+	pClient.StartClient()
+	defer pClient.Stop()
 
+	svrSrc, svrDst := config.ServerAddrs()
 	pServer := &pipe.Pipe{
-		Listen: func() (net.Listener, error) {
-			return net.Listen("tcp", "localhost:8081")
-		},
-		Dial:   pipe.DialUDP("localhost:8082"),
-		Pack:   packer.CBCDecrypt,
-		Unpack: packer.CBCEncrypt,
+		Listen:  protocol.ListenWebsocket(svrSrc),
+		Dial:    protocol.DialUDP(svrDst),
+		Packer:  packer,
+		Timeout: config.Timeout(),
 	}
-	pServer.Start()
+	pServer.StartServer()
+	defer pServer.Stop()
 
-	go udpServer("localhost:8082")
-	udpClient("localhost:8080")
+	go udpServer("localhost:18082")
+	udpClient("localhost:18080")
 }
 
 func udpServer(addr string) {

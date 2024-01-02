@@ -1,4 +1,4 @@
-package pipe
+package packer
 
 import (
 	"bytes"
@@ -6,11 +6,11 @@ import (
 	"crypto/cipher"
 )
 
-type AESPacker struct {
+type AESCBC struct {
 	Key, IV []byte
 }
 
-func (packer *AESPacker) CBCEncrypt(originData []byte) ([]byte, error) {
+func (packer *AESCBC) Pack(originData []byte) ([]byte, error) {
 	block, err := aes.NewCipher(packer.Key)
 	if err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ func (packer *AESPacker) CBCEncrypt(originData []byte) ([]byte, error) {
 	return crypted, nil
 }
 
-func (packer *AESPacker) CBCDecrypt(crypted []byte) ([]byte, error) {
+func (packer *AESCBC) Unpack(crypted []byte) ([]byte, error) {
 	block, err := aes.NewCipher(packer.Key)
 	if err != nil {
 		return nil, err
@@ -36,13 +36,13 @@ func (packer *AESPacker) CBCDecrypt(crypted []byte) ([]byte, error) {
 	return origData, nil
 }
 
-func (packer *AESPacker) pkcs7Padding(ciphertext []byte, blockSize int) []byte {
+func (packer *AESCBC) pkcs7Padding(ciphertext []byte, blockSize int) []byte {
 	padding := blockSize - len(ciphertext)%blockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(ciphertext, padtext...)
 }
 
-func (packer *AESPacker) pkcs7Unpadding(origData []byte) []byte {
+func (packer *AESCBC) pkcs7Unpadding(origData []byte) []byte {
 	length := len(origData)
 	unpadding := int(origData[length-1])
 	return origData[:(length - unpadding)]

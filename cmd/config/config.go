@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-var cliSrc = flag.String("clisrc", "localhost:8080", `src addr`)
-var cliDst = flag.String("clidst", "localhost:8081", `src addr`)
-var svrSrc = flag.String("svrsrc", "localhost:8081", `src addr`)
-var svrDst = flag.String("svrdst", "localhost:8082", `src addr`)
+var cliSrc = flag.String("clisrc", "localhost:18080", `src addr`)
+var cliDst = flag.String("clidst", "localhost:18081", `src addr`)
+var svrSrc = flag.String("svrsrc", "localhost:18081", `src addr`)
+var svrDst = flag.String("svrdst", "localhost:18082", `src addr`)
 var timeout = flag.Int("t", 120, `read timeout`)
 var passwd = flag.String("p", "7yuhdjamfklsdfk$%^&*;d/,.cx,vzbn18276312ojskdlfjal;djfka;", `password`)
 
